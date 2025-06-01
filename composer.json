@@ -1,0 +1,7 @@
+{
+    "name": "chatservice/auth-api",
+    "description": "Auth API para ChatService",
+    "require": {
+        "firebase/php-jwt": "^6.11"
+    }
+}
