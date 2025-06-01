@@ -21,8 +21,6 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 #Iniciação
 db = SQLAlchemy(app)
-migrate = Migrate(app, db)
-
 
 redis_host = os.getenv('REDIS_HOST', 'redis')
 redis_client = redis.Redis(host=redis_host, port=6379, db=0)
