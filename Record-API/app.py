@@ -1,17 +1,13 @@
 from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
-from flask_migrate import Migrate
 import redis
 import os
 from datetime import datetime
 import logging
 
-
-
+app = Flask(__name__)
 Logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-app = Flask(__name__)
 
 DB_HOST = os.getenv('DB_HOST', 'mysql-container')
 DB_PORT = os.getenv('DB_PORT', '3306')
