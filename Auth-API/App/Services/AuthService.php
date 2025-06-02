@@ -31,21 +31,21 @@ class AuthService {
 
     public function verifyToken(string $userId, string $token): bool {
         $user = $this->userModel->findById($userId);
-    
+        var_dump($user); 
+
         if (!$user) {
             return false;
         }
     
         $decoded = JWT::decode($token);
+        var_dump($decoded);
     
         if (!$decoded) {
             return false;
         }
     
-        return (
-            $decoded['userId'] === $user['id'] &&
-            $decoded['password'] === $user['password']
-        );
+        return ($decoded['sub'] == $user['id']);
     }
+    
     
 }

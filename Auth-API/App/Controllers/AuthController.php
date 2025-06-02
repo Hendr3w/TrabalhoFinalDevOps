@@ -31,7 +31,8 @@ class AuthController {
     
         $userId = $_GET['user'] ?? '';
         $headers = getallheaders();
-        $token = $headers['Authorization'] ?? '';
+        $authHeader = $headers['Authorization'] ?? '';
+        $token = str_replace('Bearer ', '', $authHeader);
     
         if (!$token || !$userId) {
             http_response_code(401);
