@@ -9,7 +9,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://user:pass@mysql-contain
 app.config['SECRET_KEY'] = 'supersecret'
 db = SQLAlchemy(app)
 
-# Modelo conforme regras
+
 class Message(db.Model):
     __tablename__ = 'messages'
     id = db.Column(db.Integer, primary_key=True)
@@ -18,7 +18,7 @@ class Message(db.Model):
     content = db.Column(db.Text, nullable=False)
     timestamp = db.Column(db.DateTime, default=datetime.datetime.utcnow)
 
-# Service layer (regra de negócio)
+
 class MessageService:
     @staticmethod
     def create_message(sender_id, receiver_id, content):
