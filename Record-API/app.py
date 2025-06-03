@@ -1,121 +1,63 @@
 from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
-import redis
-import os
-from datetime import datetime
-import logging
+from functools import wraps
+import jwt
+import datetime
 
 app = Flask(__name__)
-Logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
-DB_HOST = os.getenv('DB_HOST', 'mysql-container')
-DB_PORT = os.getenv('DB_PORT', '3306')
-DB_NAME = os.getenv('DB_NAME', 'messagedb')
-DB_USER = os.getenv('DB_USER', 'root')
-DB_PASSWORD = os.getenv('DB_PASSWORD', 'password')
-
-#Conecção com o MySQL
-app.config['SQLALCHEMY_DATABASE_URI'] = f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
-#Iniciação
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://user:pass@mysql-container:3306/messagedb'
+app.config['SECRET_KEY'] = 'supersecret'
 db = SQLAlchemy(app)
 
-redis_host = os.getenv('REDIS_HOST', 'redis')
-redis_client = redis.Redis(host=redis_host, port=6379, db=0)
-
-# Mensagem para o BD
+# Modelo conforme regras
 class Message(db.Model):
     __tablename__ = 'messages'
-    
     id = db.Column(db.Integer, primary_key=True)
-    sender = db.Column(db.String(80), nullable=False)
-    receiver = db.Column(db.String(80), nullable=False)
+    sender_id = db.Column(db.Integer, nullable=False)
+    receiver_id = db.Column(db.Integer, nullable=False)
     content = db.Column(db.Text, nullable=False)
-    timestamp = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    status = db.Column(db.String(20), default='unread')
+    timestamp = db.Column(db.DateTime, default=datetime.datetime.utcnow)
 
-    def to_dict(self):
-        return {
-            'id': self.id,
-            'sender': self.sender,
-            'receiver': self.receiver,
-            'content': self.content,
-            'timestamp': self.timestamp.isoformat(),
-            'status': self.status
-        }
-
-
-@app.route('/health', methods=['GET'])
-def health_check():
-    try:
-        
-        db.session.execute('SELECT 1')
-        
-        redis_client.ping()
-        return jsonify({'status': 'healthy'}), 200
-    except Exception as e:
-        logger.error(f"Health check failed: {str(e)}")
-        return jsonify({'status': 'unhealthy', 'error': str(e)}), 500
-
-@app.route('/messages', methods=['POST'])
-def store_message():
-    try:
-        data = request.get_json()
-        
-        if not all(k in data for k in ['sender', 'receiver', 'content']):
-            return jsonify({'error': 'Missing required fields'}), 400
-        
+# Service layer (regra de negócio)
+class MessageService:
+    @staticmethod
+    def create_message(sender_id, receiver_id, content):
         new_message = Message(
-            sender=data['sender'],
-            receiver=data['receiver'],
-            content=data['content'],
-            status='unread'
+            sender_id=sender_id,
+            receiver_id=receiver_id,
+            content=content
         )
-        
         db.session.add(new_message)
         db.session.commit()
+        return new_message
+
+def token_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token = request.headers.get('Authorization')
+        if not token:
+            return jsonify({'message': 'Token is missing!'}), 401
         
-        redis_key = f"message:{new_message.id}"
-        redis_client.hmset(redis_key, new_message.to_dict())
-               
-        redis_client.publish('new_messages', str(new_message.id))
+        try:
+            data = jwt.decode(token.split()[1], app.config['SECRET_KEY'], algorithms=["HS256"])
+        except:
+            return jsonify({'message': 'Token is invalid!'}), 401
         
-        return jsonify(new_message.to_dict()), 201
+        return f(*args, **kwargs)
+    return decorated
+
+@app.route('/message', methods=['POST'])
+@token_required
+def add_message():
+    data = request.get_json()
     
-    except Exception as e:
-        db.session.rollback()
-        logger.error(f"Error storing message: {str(e)}")
-        return jsonify({'error': 'Failed to store message'}), 500
-
-
-@app.route('/messages', methods=['GET'])
-def get_messages():
-    try:
-        
-        cached_messages = []
-        for key in redis_client.scan_iter("message:*"):
-            cached_msg = {k.decode('utf-8'): v.decode('utf-8') for k, v in redis_client.hgetall(key).items()}
-            cached_messages.append(cached_msg)
-        
-        if cached_messages:
-            return jsonify({'messages': cached_messages, 'source': 'cache'}), 200
-        
-
-        messages = Message.query.order_by(Message.timestamp.desc()).limit(100).all()
-        result = [msg.to_dict() for msg in messages]
-        
-        
-        for msg in messages:
-            redis_key = f"message:{msg.id}"
-            redis_client.hmset(redis_key, msg.to_dict())
-        
-        return jsonify({'messages': result, 'source': 'database'}), 200
+    message = MessageService.create_message(
+        data['userIdSend'],
+        data['userIdReceive'],
+        data['message']
+    )
     
-    except Exception as e:
-        logger.error(f"Error retrieving messages: {str(e)}")
-        return jsonify({'error': 'Failed to retrieve messages'}), 500
+    return jsonify({"ok": True}), 201
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
