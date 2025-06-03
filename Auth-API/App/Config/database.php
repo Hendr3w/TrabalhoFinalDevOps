@@ -7,7 +7,7 @@ use PDO;
 class Database {
     public function connect(): PDO {
         return new PDO(
-            'mysql:host=127.0.0.1;port=3306;dbname=auth_api;charset=utf8mb4',
+            'mysql:host=mysql;port=3306;dbname=auth_api;charset=utf8mb4',
             'auth_user',
             'auth_pass',
             [

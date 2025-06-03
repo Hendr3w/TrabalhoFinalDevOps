@@ -31,14 +31,14 @@ class AuthService {
 
     public function verifyToken(string $userId, string $token): bool {
         $user = $this->userModel->findById($userId);
-        var_dump($user); 
+        //var_dump($user); Usamos para debug.
 
         if (!$user) {
             return false;
         }
     
         $decoded = JWT::decode($token);
-        var_dump($decoded);
+        //var_dump($decoded);
     
         if (!$decoded) {
             return false;

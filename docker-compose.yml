@@ -1,9 +1,29 @@
-version: '3.8'
-
 services:
+  api:
+    build:
+      context: ./Auth-API
+      dockerfile: Dockerfile
+    container_name: auth_api
+    ports:
+      - "8000:80"
+    depends_on:
+      - mysql
+      - redis
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: auth_api
+      DB_USER: root
+      DB_PASS: senha
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    volumes:
+      - ./Auth-API:/var/www/html
+    restart: always
+
   mysql:
     image: mysql:8.0
-    container_name: auth_mysql
+    container_name: mysql
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: root
